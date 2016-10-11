@@ -167,13 +167,13 @@ def distance():
 def set_user_present():
     global user_is_present
     user_is_present = True
-    subprocess.call(['./image_on.sh'])
+    subprocess.call(['./modules/facial_recognition/image_on.sh'])
 
 
 def set_user_not_present():
     global user_is_present
     user_is_present = False
-    subprocess.call(['./image_off.sh'])
+    subprocess.call(['./modules/facial_recognition/image_off.sh'])
 
 
 def could_turn_off():
