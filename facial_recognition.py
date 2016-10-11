@@ -177,8 +177,7 @@ def set_user_not_present():
 
 
 def could_turn_off():
-    last_detection_delta = datetime.now() - last_detection
-    if last_detection_delta.total_seconds() > 10:
+    if (datetime.now() - last_detection).total_seconds() > 10:
         set_user_not_present()
 
 
