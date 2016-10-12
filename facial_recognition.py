@@ -196,7 +196,7 @@ def loop_de_loop():
 
         elif user_is_present:
             could_turn_off()
-        time.sleep(1)
+        time.sleep(0.5)
 
 
 loop_de_loop()
