@@ -7,7 +7,12 @@ import subprocess
 from datetime import datetime, timedelta
 import RPi.GPIO as GPIO
 from picamera import PiCamera
-import traceback
+import serial
+
+# Arduino
+USBSerial = '/dev/ttyACM0'
+baud = 9600
+arduino = serial.Serial(USBSerial, baud, timeout=1)
 
 # Camera
 camera = PiCamera()
@@ -167,12 +172,14 @@ def distance():
 def set_user_present():
     global user_is_present
     user_is_present = True
+    arduino.write("white")
     subprocess.call(['./modules/facial_recognition/image_on.sh'])
 
 
 def set_user_not_present():
     global user_is_present
     user_is_present = False
+    arduino.write("black")
     subprocess.call(['./modules/facial_recognition/image_off.sh'])
 
 
