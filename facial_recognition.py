@@ -8,6 +8,11 @@ from datetime import datetime, timedelta
 import RPi.GPIO as GPIO
 from picamera import PiCamera
 import serial
+import traceback
+import logging
+
+# Logging
+logging.basicConfig(filename='facial_regognition.log',level=logging.DEBUG)
 
 # Arduino
 USBSerial = '/dev/ttyACM0'
@@ -38,29 +43,32 @@ last_lookup = datetime.now() - timedelta(seconds=60)
 last_detection = datetime.now()
 user_is_present = False
 
+
 def capture_picture():
-    # print 'taking picture'
+    logging.debug('Taking picture')
     camera.capture('image.jpg')
     return
 
 
 def facial_recognition():
-    # print 'Starting facial recognition'
+    logging.debug('Starting facial recognition')
     global last_lookup
     last_lookup = datetime.now()
 
     capture_picture()
     faces = detect_faces()
-    # print faces
+    logging.debug('Faces:')
+    logging.debug(faces)
     identities = identify_faces(faces)
-    # print identities
+    logging.debug('Identities:')
+    logging.debug(identities)
     names = get_identity_names(identities)
-    # print names
+    logging.debug('Names:')
+    logging.debug(names)
     push_to_mirror(names, len(faces))
 
 
 def detect_faces():
-    # print 'detecting faces'
     headers = {
         'Content-Type': 'application/octet-stream',
         'Ocp-Apim-Subscription-Key': subscription_key,
@@ -75,13 +83,12 @@ def detect_faces():
             faces.append(face_object['faceId'])
         return faces
     except IndexError:
-        # print 'Exception in detecting faces'
-        # print traceback.print_exc()
+        logging.debug('Exception when detecting faces')
+        logging.error(traceback.print_exc())
         return []
 
 
 def identify_faces(faces):
-    # print 'identifying faces'
     headers = {
         'Content-Type': 'application/json',
         'Ocp-Apim-Subscription-Key': subscription_key,
@@ -103,13 +110,12 @@ def identify_faces(faces):
                 identities.append(identity_object['candidates'][0]['personId'])
         return identities
     except Exception:
-        # print 'Exception in identifying faces'
-        # print traceback.print_exc()
+        logging.debug('Exception when identifying faces')
+        logging.error(traceback.print_exc())
         return []
 
 
 def get_identity_names(identities):
-    # print 'getting names'
     names = []
     for identity in identities:
         names.append(identity_request(identity))
@@ -131,6 +137,7 @@ def push_to_mirror(names, detection_count):
         # print(json.dumps({names: names, detection_count: detection_count}))
         print json.dumps(names)
     except Exception:
+        logging.error(traceback.print_exc())
         pass
     sys.stdout.flush()
 
@@ -166,10 +173,12 @@ def distance():
     # multiply with the sonic speed (34300 cm/s)
     # and divide by 2, because there and back
     distance = (TimeElapsed * 34300) / 2
+    logging.debug('Distance: '+str(distance))
     return distance
 
 
 def set_user_present():
+    logging.debug('User is present')
     global user_is_present
     user_is_present = True
     arduino.write("white")
@@ -177,6 +186,7 @@ def set_user_present():
 
 
 def set_user_not_present():
+    logging.debug('User is NOT present')
     global user_is_present
     user_is_present = False
     arduino.write("black")
@@ -191,19 +201,24 @@ def could_turn_off():
 def loop_de_loop():
     global last_detection
     set_user_not_present()
+    last_true = False
     while True:
         if distance() < 130:
-            last_detection = datetime.now()
-            if not user_is_present:
-                set_user_present()
-
-            if is_time_for_lookup():
-                time.sleep(0.5)
-                facial_recognition()
-
+            logging.debug('Distance under 130')
+            if last_true:
+                logging.debug('Twice')
+                last_detection = datetime.now()
+                if not user_is_present:
+                    set_user_present()
+                if is_time_for_lookup():
+                    time.sleep(0.5)
+                    facial_recognition()
+            last_true = True
         elif user_is_present:
+            last_true = False
             could_turn_off()
         time.sleep(0.5)
 
 
+logging.info('Starting application')
 loop_de_loop()
