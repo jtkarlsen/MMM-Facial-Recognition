@@ -59,13 +59,14 @@ def facial_recognition():
     faces = detect_faces()
     logging.debug('Faces:')
     logging.debug(faces)
-    identities = identify_faces(faces)
-    logging.debug('Identities:')
-    logging.debug(identities)
-    names = get_identity_names(identities)
-    logging.debug('Names:')
-    logging.debug(names)
-    push_to_mirror(names, len(faces))
+    if len(faces) > 0:
+        identities = identify_faces(faces)
+        logging.debug('Identities:')
+        logging.debug(identities)
+        names = get_identity_names(identities)
+        logging.debug('Names:')
+        logging.debug(names)
+        push_to_mirror(names, len(faces))
 
 
 def detect_faces():
