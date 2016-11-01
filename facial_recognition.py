@@ -42,7 +42,8 @@ subscription_key = '*SECRET*'
 last_lookup = datetime.now() - timedelta(seconds=60)
 last_detection = datetime.now()
 user_is_present = False
-
+lights_on = False
+monitor_on = False
 
 def capture_picture():
     logging.debug('Taking picture')
@@ -174,52 +175,81 @@ def distance():
     # multiply with the sonic speed (34300 cm/s)
     # and divide by 2, because there and back
     distance = (TimeElapsed * 34300) / 2
-    logging.debug('Distance: '+str(distance))
+    if distance < 150:
+        logging.debug('Distance: '+str(distance))
     return distance
 
 
-def set_user_present():
-    logging.debug('User is present')
+def turn_on_monitor():
+    if not monitor_on:
+        logging.debug("Turning on monitor")
+        global monitor_on
+        monitor_on = True
+        subprocess.call(['./modules/facial_recognition/image_on.sh'])
+
+
+def turn_off_monitor():
+    if monitor_on:
+        logging.debug("Turning off monitor")
+        global monitor_on
+        monitor_on = False
+        subprocess.call(['./modules/facial_recognition/image_off.sh'])
+
+
+def turn_on():
+    logging.debug('Turn on')
     global user_is_present
     user_is_present = True
-    arduino.write("white")
-    subprocess.call(['./modules/facial_recognition/image_on.sh'])
+    turn_on_lights()
+    turn_on_monitor()
 
 
-def set_user_not_present():
-    logging.debug('User is NOT present')
+def turn_off():
     global user_is_present
     user_is_present = False
-    arduino.write("black")
-    subprocess.call(['./modules/facial_recognition/image_off.sh'])
+    seconds_since_last_detection = (datetime.now() - last_detection).total_seconds()
+    if seconds_since_last_detection > 300:
+        turn_off_monitor()
+    if seconds_since_last_detection > 15:
+        turn_off_lights()
 
 
-def could_turn_off():
-    if (datetime.now() - last_detection).total_seconds() > 10:
-        set_user_not_present()
+def turn_on_lights():
+    if not lights_on:
+        logging.debug("Turning on light")
+        global lights_on
+        lights_on = True
+        arduino.write("white")
+
+
+def turn_off_lights():
+    if lights_on:
+        logging.debug("Turning off light")
+        global lights_on
+        lights_on = False
+        arduino.write("black")
 
 
 def loop_de_loop():
+    global user_is_present
     global last_detection
-    set_user_not_present()
-    last_true = False
+    turn_off()
+    user_is_present = True
+    user_present_count = 0
     while True:
         if distance() < 130:
-            logging.debug('Distance under 130')
-            if last_true:
-                logging.debug('Twice')
+            if user_present_count > 5:
                 last_detection = datetime.now()
                 if not user_is_present:
-                    set_user_present()
+                    turn_on()
                 if is_time_for_lookup():
                     time.sleep(0.5)
                     facial_recognition()
-            last_true = True
-        elif user_is_present:
-            last_true = False
-            could_turn_off()
-        time.sleep(0.5)
-
+            user_present_count+=1
+        else:
+            user_present_count = 0
+            turn_off()
+        time.sleep(0.1)
 
 logging.info('Starting application')
 loop_de_loop()
