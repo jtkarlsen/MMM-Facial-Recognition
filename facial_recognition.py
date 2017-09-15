@@ -12,7 +12,7 @@ import traceback
 import logging
 
 # Logging
-logging.basicConfig(filename='facial_regognition.log',level=logging.DEBUG)
+logging.basicConfig(filename='facial_recognition.log',level=logging.DEBUG)
 
 # Arduino
 USBSerial = '/dev/ttyACM0'
@@ -37,27 +37,31 @@ detect_params = urllib.urlencode({
 })
 
 # Vars
-base_url = 'https://api.projectoxford.ai/face/v1.0/'
-subscription_key = '*SECRET*'
-last_lookup = datetime.now() - timedelta(seconds=60)
+face_base_url = 'https://api.projectoxford.ai/face/v1.0/'
+emotion_base_url = 'https://api.projectoxford.ai/emotion/v1.0/recognize'
+face_subscription_key = '*secret*'
+emotion_subscription_key = '*secret*'
+last_face_lookup = datetime.now() - timedelta(seconds=60)
+last_emotion_lookup = datetime.now() - timedelta(seconds=60)
 last_detection = datetime.now()
 user_is_present = False
 lights_on = False
 monitor_on = False
 
 def capture_picture():
-    logging.debug('Taking picture')
-    camera.capture('image.jpg')
-    return
+    image_name = "./faces/" + datetime.now().strftime("%Y-%m-%dT%H:%M:%S") + ".jpg"
+    logging.debug('Taking picture ' + image_name)
+    camera.capture(image_name)
+    return image_name
 
 
 def facial_recognition():
     logging.debug('Starting facial recognition')
-    global last_lookup
-    last_lookup = datetime.now()
+    global last_face_lookup
+    last_face_lookup = datetime.now()
 
-    capture_picture()
-    faces = detect_faces()
+    image_name = capture_picture()
+    faces = detect_faces(image_name)
     logging.debug('Faces:')
     logging.debug(faces)
     if len(faces) > 0:
@@ -67,16 +71,16 @@ def facial_recognition():
         names = get_identity_names(identities)
         logging.debug('Names:')
         logging.debug(names)
-        push_to_mirror(names, len(faces))
+        push_identities_to_mirror(names, len(faces))
 
 
-def detect_faces():
+def detect_faces(image_name):
     headers = {
         'Content-Type': 'application/octet-stream',
-        'Ocp-Apim-Subscription-Key': subscription_key,
+        'Ocp-Apim-Subscription-Key': face_subscription_key,
     }
-    url = base_url + 'detect?' + detect_params
-    data = open('./image.jpg', 'rb').read()
+    url = face_base_url + 'detect?' + detect_params
+    data = open(image_name, 'rb').read()
     response = requests.post(url, data=data, headers=headers)
     try:
         faces = []
@@ -93,9 +97,9 @@ def detect_faces():
 def identify_faces(faces):
     headers = {
         'Content-Type': 'application/json',
-        'Ocp-Apim-Subscription-Key': subscription_key,
+        'Ocp-Apim-Subscription-Key': face_subscription_key,
     }
-    url = base_url + 'identify'
+    url = face_base_url + 'identify'
     body = {
         "personGroupId": "beboere",
         "faceIds": faces,
@@ -127,25 +131,48 @@ def get_identity_names(identities):
 def identity_request(identity):
     headers = {
         'Content-Type': 'application/json',
-        'Ocp-Apim-Subscription-Key': subscription_key,
+        'Ocp-Apim-Subscription-Key': face_subscription_key,
     }
-    url = base_url + 'persongroups/beboere/persons/' + identity
+    url = face_base_url + 'persongroups/beboere/persons/' + identity
     response = requests.get(url, params=None, headers=headers)
     return response.json()['name']
 
 
-def push_to_mirror(names, detection_count):
+def push_identities_to_mirror(names, detection_count):
+    data = {}
+    data['type'] = 'identity'
+    data['names'] = names
+    data['faces'] = detection_count
+    push_to_mirror(data)
+
+
+def push_emotion_to_mirror(emotion):
+    data = {}
+    data['type'] = 'emotion'
+    data['emotion'] = emotion
+    push_to_mirror(data)
+
+
+def push_to_mirror(data):
+    logging.debug('pushing to mirror')
+    logging.debug(data)
     try:
-        # print(json.dumps({names: names, detection_count: detection_count}))
-        print json.dumps(names)
+        print json.dumps(data)
     except Exception:
         logging.error(traceback.print_exc())
         pass
     sys.stdout.flush()
 
 
-def is_time_for_lookup():
-    if (datetime.now() - last_lookup).total_seconds() > 15:
+def is_time_for_face_lookup():
+    if (datetime.now() - last_face_lookup).total_seconds() > 20:
+        return True
+    else:
+        return False
+
+
+def is_time_for_emotion_lookup():
+    if (datetime.now() - last_emotion_lookup).total_seconds() > 20:
         return True
     else:
         return False
@@ -230,6 +257,26 @@ def turn_off_lights():
         arduino.write("black")
 
 
+def get_emotion():
+    logging.debug('Starting facial recognition')
+    global last_emotion_lookup
+    last_emotion_lookup = datetime.now()
+    image_name = capture_picture()
+    headers = {
+        'Content-Type': 'application/octet-stream',
+        'Ocp-Apim-Subscription-Key': emotion_subscription_key,
+    }
+    data = open(image_name, 'rb').read()
+    response = requests.post(emotion_base_url, data=data, headers=headers)
+    try:
+        emotion = response.json()
+        push_emotion_to_mirror(emotion)
+    except IndexError:
+        logging.debug('Exception when detecting emotion')
+        logging.error(traceback.print_exc())
+        return []
+
+
 def loop_de_loop():
     global user_is_present
     global last_detection
@@ -242,9 +289,12 @@ def loop_de_loop():
                 last_detection = datetime.now()
                 if not user_is_present:
                     turn_on()
-                if is_time_for_lookup():
+                if is_time_for_face_lookup():
                     time.sleep(0.5)
                     facial_recognition()
+            if user_present_count > 15:
+                if is_time_for_emotion_lookup():
+                    get_emotion()
             user_present_count+=1
         else:
             user_present_count = 0

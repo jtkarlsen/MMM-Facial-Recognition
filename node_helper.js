@@ -24,9 +24,12 @@ module.exports = NodeHelper.create({
             mode: 'text'
         });
 
-        pyshell.on('message', function (identities) {
-            console.log("FR: [" + self.name + "] " + identities);
-            self.sendSocketNotification('USER', {user_map: identities});
+        pyshell.on('message', function (data) {
+            var payload = JSON.parse(data);
+            console.log("FR: [" + self.name + "] " + data);
+            console.log("FR: [" + self.name + "] " + payload);
+            console.log("FR: [" + self.name + "] " + "sending type: " + payload.type);
+            self.sendSocketNotification(payload.type, payload);
         });
 
         pyshell.end(function (err) {
