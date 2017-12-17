@@ -50,7 +50,7 @@ void turnOff() {
 void solidColor() {
   uint16_t i;
   for (i=0; i<strip.numPixels(); i++) {
-    uint32_t warmWhite = strip.Color(255, 197, 143);
+    uint32_t warmWhite = strip.Color(255, 147, 41);
     strip.setPixelColor(i, warmWhite);
   }
   strip.show();
