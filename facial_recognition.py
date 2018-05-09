@@ -10,9 +10,12 @@ from picamera import PiCamera
 import serial
 import traceback
 import logging
+import os
+from dotenv import load_dotenv, find_dotenv
+load_dotenv(find_dotenv())
 
 # Logging
-logging.basicConfig(filename='facial_recognition.log',level=logging.DEBUG)
+logging.basicConfig(filename='facial_recognition.log', level=logging.DEBUG)
 
 # Arduino
 USBSerial = '/dev/ttyACM0'
@@ -29,24 +32,25 @@ GPIO.setmode(GPIO.BCM)
 GPIO.setwarnings(False)
 TRIG = 23
 ECHO = 24
-GPIO.setup(TRIG,GPIO.OUT)
-GPIO.setup(ECHO,GPIO.IN)
+GPIO.setup(TRIG, GPIO.OUT)
+GPIO.setup(ECHO, GPIO.IN)
 
 detect_params = urllib.urlencode({
     'returnFaceId': 'true'
 })
 
 # Vars
-face_base_url = 'https://api.projectoxford.ai/face/v1.0/'
+face_base_url = 'https://westus.api.cognitive.microsoft.com/face/v1.0/'
 emotion_base_url = 'https://api.projectoxford.ai/emotion/v1.0/recognize'
-face_subscription_key = '*secret*'
-emotion_subscription_key = '*secret*'
+face_subscription_key = os.getenv("FACE_API_KEY")
+emotion_subscription_key = os.getenv("EMOTION_API_KEY")
 last_face_lookup = datetime.now() - timedelta(seconds=60)
 last_emotion_lookup = datetime.now() - timedelta(seconds=60)
 last_detection = datetime.now()
 user_is_present = False
 lights_on = False
 monitor_on = False
+
 
 def capture_picture():
     image_name = "./faces/" + datetime.now().strftime("%Y-%m-%dT%H:%M:%S") + ".jpg"
@@ -208,17 +212,17 @@ def distance():
 
 
 def turn_on_monitor():
+    global monitor_on
     if not monitor_on:
         logging.debug("Turning on monitor")
-        global monitor_on
         monitor_on = True
         subprocess.call(['./modules/facial_recognition/image_on.sh'])
 
 
 def turn_off_monitor():
+    global monitor_on
     if monitor_on:
         logging.debug("Turning off monitor")
-        global monitor_on
         monitor_on = False
         subprocess.call(['./modules/facial_recognition/image_off.sh'])
 
@@ -234,7 +238,8 @@ def turn_on():
 def turn_off():
     global user_is_present
     user_is_present = False
-    seconds_since_last_detection = (datetime.now() - last_detection).total_seconds()
+    seconds_since_last_detection = (
+        datetime.now() - last_detection).total_seconds()
     if seconds_since_last_detection > 300:
         turn_off_monitor()
     if seconds_since_last_detection > 15:
@@ -242,17 +247,17 @@ def turn_off():
 
 
 def turn_on_lights():
+    global lights_on
     if not lights_on:
         logging.debug("Turning on light")
-        global lights_on
         lights_on = True
         arduino.write("white")
 
 
 def turn_off_lights():
+    global lights_on
     if lights_on:
         logging.debug("Turning off light")
-        global lights_on
         lights_on = False
         arduino.write("black")
 
@@ -295,11 +300,12 @@ def loop_de_loop():
             if user_present_count > 15:
                 if is_time_for_emotion_lookup():
                     get_emotion()
-            user_present_count+=1
+            user_present_count += 1
         else:
             user_present_count = 0
             turn_off()
         time.sleep(0.1)
+
 
 logging.info('Starting application')
 loop_de_loop()
