@@ -17,7 +17,7 @@ Module.register("facial_recognition", {
         if (unknown_faces > 1) {
           content.innerHTML += " og " + String(unknown_faces) + " andre";
         } else if (unknown_faces == 1) {
-          content.innerHTML += " og " + String(unknown_faces) + " annen";
+          content.innerHTML += " og en annen";
         }
       } else if (this.users.length < 1) {
         content.innerHTML = "Hei";
