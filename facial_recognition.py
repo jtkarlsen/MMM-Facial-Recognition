@@ -240,9 +240,9 @@ def turn_off():
     user_is_present = False
     seconds_since_last_detection = (
         datetime.now() - last_detection).total_seconds()
-    if seconds_since_last_detection > 300:
+    if seconds_since_last_detection > 1800:
         turn_off_monitor()
-    if seconds_since_last_detection > 15:
+    if seconds_since_last_detection > 20:
         turn_off_lights()
 
 
