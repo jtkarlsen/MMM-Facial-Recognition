@@ -2,8 +2,8 @@ Module.register("facial_recognition", {
   // Default module config.
   defaults: {
     sensitivity: 0.5,
-    duplicate_timeframe: 10,
-    display_duration: 10
+    duplicate_timeframe: 20,
+    display_duration: 20
   },
 
   // Override dom generator.
@@ -125,24 +125,19 @@ Module.register("facial_recognition", {
   },
 
   sayHello: function(names, faces) {
-    // if (!this.isDuplicateUser(identity)) {
     this.users = names;
     this.face_count = faces;
-    // this.current_user.name = identity;
-    // this.current_user.time = this.timestamp();
 
-    if (!this.active_greeting) {
-      Log.info("Saying hello");
-      this.active_greeting = true;
-      this.updateDom();
-      var self = this;
-      setTimeout(function() {
-        Log.info("Done saying hello");
-        self.active_greeting = false;
-        self.updateDom();
-      }, this.config.display_duration * 1000);
-    }
-    // }
+    Log.info("Saying hello");
+    this.active_greeting = true;
+    this.updateDom();
+    clearTimeout(this.timer);
+    let self = this;
+    this.timer = setTimeout(function() {
+      Log.info("Done saying hello");
+      self.active_greeting = false;
+      self.updateDom();
+    }, this.config.display_duration * 1000);
   },
 
   parseName: function(name) {
@@ -192,6 +187,7 @@ Module.register("facial_recognition", {
     this.active_emotion = false;
     this.active_test = false;
     this.testMessage = "Test";
+    this.timer = undefined;
     Log.info("FR: Starting module: " + this.name);
     this.sendSocketNotification("START_RECOGNITION", this.config);
   }
