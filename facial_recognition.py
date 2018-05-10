@@ -41,7 +41,7 @@ detect_params = urllib.urlencode({
 
 # Vars
 face_base_url = 'https://westus.api.cognitive.microsoft.com/face/v1.0/'
-emotion_base_url = 'https://api.projectoxford.ai/emotion/v1.0/recognize'
+emotion_base_url = 'https://westus.api.cognitive.microsoft.com/emotion/v1.0/recognize'
 face_subscription_key = os.getenv("FACE_API_KEY")
 emotion_subscription_key = os.getenv("EMOTION_API_KEY")
 last_face_lookup = datetime.now() - timedelta(seconds=60)
@@ -263,7 +263,7 @@ def turn_off_lights():
 
 
 def get_emotion():
-    logging.debug('Starting facial recognition')
+    logging.debug('Starting emotion')
     global last_emotion_lookup
     last_emotion_lookup = datetime.now()
     image_name = capture_picture()
@@ -304,7 +304,7 @@ def loop_de_loop():
         else:
             user_present_count = 0
             turn_off()
-        time.sleep(0.1)
+        time.sleep(0.05)
 
 
 logging.info('Starting application')
