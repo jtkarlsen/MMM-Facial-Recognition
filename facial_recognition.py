@@ -40,7 +40,7 @@ detect_params = urllib.urlencode({
 })
 
 # Vars
-face_base_url = 'https://westus.api.cognitive.microsoft.com/face/v1.0/'
+face_base_url = 'https://northeurope.api.cognitive.microsoft.com/face/v1.0/'
 emotion_base_url = 'https://westus.api.cognitive.microsoft.com/emotion/v1.0/recognize'
 face_subscription_key = os.getenv("FACE_API_KEY")
 emotion_subscription_key = os.getenv("EMOTION_API_KEY")
@@ -169,7 +169,7 @@ def push_to_mirror(data):
 
 
 def is_time_for_face_lookup():
-    if (datetime.now() - last_face_lookup).total_seconds() > 20:
+    if (datetime.now() - last_face_lookup).total_seconds() > 15:
         return True
     else:
         return False
